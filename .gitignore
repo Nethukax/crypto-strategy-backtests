@@ -14,4 +14,4 @@ __pycache__/
 .venv/
 venv/
 !portfolio.png
-!portfolio.png
+.pytest_cache/

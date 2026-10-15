@@ -1,4 +1,6 @@
-﻿# Testing crypto trading strategies honestly
+# Testing crypto trading strategies honestly
+
+[![tests](https://github.com/Nethukax/crypto-strategy-backtests/actions/workflows/tests.yml/badge.svg)](https://github.com/Nethukax/crypto-strategy-backtests/actions/workflows/tests.yml)
 
 I wanted a bot that trades crypto with real money using the ICT / "smart money"
 concepts popular on YouTube: **AMD (Accumulation, Manipulation, Distribution)**,
@@ -129,6 +131,28 @@ The 4-year result looked borderline-promising. Adding 2020–2022 killed it: the
 - **Fees matter most on short timeframes.** On 15m charts the stops are so tight that fees and slippage eat a big share of each trade's risk, so the bot had to skip most BTC setups.
 - **Compare with doing nothing.** A bot that makes +54% sounds good until buy & hold made +621%.
 - **Test your tests.** My first lookahead check was broken: it silently tested zero signals and reported "all match". I only caught it because a later run returned 0 signals where I expected some.
+
+---
+
+## Tests
+
+27 automated tests run on every push (GitHub Actions, Python 3.11 and 3.13):
+
+| File | What it guards |
+|---|---|
+| `tests/test_no_lookahead.py` | Signals, 1h bias and trend entries are identical when recomputed with only the data available at the time |
+| `tests/test_backtest.py` | Fill rules on hand-made candles: stop-first when stop and target share a candle, gaps, limit orders, session close, 1% sizing |
+| `tests/test_trend.py` | No edge on random data, clear edge on trending data, portfolio matches single-coin trades exactly |
+| `tests/test_live.py` | Real-money path against a fake exchange: refuses without the env var, rejected stop closes the position, unknown positions closed |
+| `tests/test_concepts.py` | FVG, swing confirmation delay, S/R clustering, volume profile POC |
+
+The tests were checked by planting bugs on purpose (an FVG that peeks at the next candle, a 1h bias that uses an unfinished candle,
+a channel that includes the current candle, target checked before stop). The suite caught all four.
+
+```bash
+pip install pytest
+pytest
+```
 
 ---
 
