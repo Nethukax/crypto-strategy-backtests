@@ -19,6 +19,7 @@ This repo is the full pipeline and an honest write-up of what the data showed.
 | Strategy | Test | Result |
 |---|---|---|
 | AMD / smart money (15m) | 8 coins it was never tuned on, 2 years, 369 trades | **Loses**: profit factor 0.88, −27.8R |
+| AMD loss post-mortem | 283 losing trades on 10 fresh coins | 72% were simply the wrong direction; no fix or feature beat noise |
 | Trend following (4h) | 11 coins, 4 years, 914 trades, no tuning | Weak edge: profit factor 1.26 (bar was 1.3) |
 | Trend following, all coins in one account | 6 years (2020–2026) | +54% total, 7.5%/yr, −36% drawdown, 810 days underwater |
 | Buy & hold BTC | same 6 years | **+621%**, −77% drawdown |
@@ -38,6 +39,7 @@ Over this period, simply holding BTC beat every bot here.
 | `coins.py` | Runs one frozen set of rules on coins that never influenced any setting |
 | `trend.py` | Donchian breakout + ATR trailing stop, rules fixed before seeing any results |
 | `portfolio.py` | All coins in one account, overlapping positions, compared with buy & hold |
+| `postmortem.py` | Why each losing trade lost: what the bot expected vs what happened, loss causes, and whether a fix would help **all** trades |
 | `live.py` | Exchange execution via ccxt (testnet by default) with safety rails |
 | `data.py` | Downloads candles from the exchange's public API, with caching and retries |
 
@@ -94,6 +96,45 @@ TAO, the coin it was tuned on, looks profitable. Coins it never saw lose. That g
 
 **Verdict: no edge.**
 
+#### Post-mortem: can the bot learn from its losses?
+
+The natural next idea: after every loss, look at what the bot expected, what actually happened,
+and learn from the mistake. `postmortem.py` does exactly that for all 470 trades on the 10 fresh coins
+(SOL and DOGE included this time): 40% win rate, −0.05R per trade.
+
+**Why the 283 losses happened:**
+
+| Cause | Share |
+|---|---|
+| Stopped out and price **never** reached the target afterwards (wrong direction) | 72% |
+| Still losing when the session closed | 11% |
+| Stopped out, then price hit the target later that session | 8% |
+| Got 75%+ of the way to target, then reversed | 7% |
+| Went straight against the trade | 2% |
+
+**Would a fix have helped?** Replayed on *all* trades, winners included (before fees):
+
+| Change | Avg R per trade |
+|---|---|
+| Current rules | +0.052 |
+| Stop 1.5x wider | +0.004 |
+| Stop 2x wider | +0.018 |
+| Target halfway | +0.082 |
+
+The best fix adds +0.03R, far less than the 0.1–0.2R that fees cost per trade.
+
+**Does any feature separate winners from losers?** Side, time of day, target size, confluence score,
+volume spike, POC, liquidity pool, engulfing candle: **none** differed from the average by more than
+random noise would produce. If anything, more confirmation looked *worse*: trades with all 3 confluence
+signals won 29% of the time (−0.30R), trades with none +0.11R.
+
+One loss shows how random it is: an ETH short reached +1.40R of a +1.41R target, missed by 0.01R,
+then reversed to the stop.
+
+**Conclusion:** 72% of losses were simply the wrong direction, and there is no repeatable pattern in them.
+A bot that adjusts itself after every loss would be chasing noise. That's exactly the overfitting
+the earlier tests caught, just done automatically and live.
+
 ### 2. Trend following (4h candles)
 
 **Rules, fixed in advance:** go long when a candle closes above the 20-day high, short below the 20-day low. Stop at 3 ATR, trailing behind the best close. No profit target. 1% risk per trade. Nothing tuned.
@@ -130,13 +171,14 @@ The 4-year result looked borderline-promising. Adding 2020–2022 killed it: the
 - **Write the pass/fail bar before you look.** Otherwise "1.26 is basically 1.3" is very tempting.
 - **Fees matter most on short timeframes.** On 15m charts the stops are so tight that fees and slippage eat a big share of each trade's risk, so the bot had to skip most BTC setups.
 - **Compare with doing nothing.** A bot that makes +54% sounds good until buy & hold made +621%.
+- **Losses aren't always mistakes.** The post-mortem found no repeatable pattern in 283 losses. "Learning" from each one would just fit noise.
 - **Test your tests.** My first lookahead check was broken: it silently tested zero signals and reported "all match". I only caught it because a later run returned 0 signals where I expected some.
 
 ---
 
 ## Tests
 
-27 automated tests run on every push (GitHub Actions, Python 3.11 and 3.13):
+31 automated tests run on every push (GitHub Actions, Python 3.11 and 3.13):
 
 | File | What it guards |
 |---|---|
@@ -145,6 +187,7 @@ The 4-year result looked borderline-promising. Adding 2020–2022 killed it: the
 | `tests/test_trend.py` | No edge on random data, clear edge on trending data, portfolio matches single-coin trades exactly |
 | `tests/test_live.py` | Real-money path against a fake exchange: refuses without the env var, rejected stop closes the position, unknown positions closed |
 | `tests/test_concepts.py` | FVG, swing confirmation delay, S/R clustering, volume profile POC |
+| `tests/test_postmortem.py` | The post-mortem's trade replay follows the backtester's rules |
 
 The tests were checked by planting bugs on purpose (an FVG that peeks at the next candle, a 1h bias that uses an unfinished candle,
 a channel that includes the current candle, target checked before stop). The suite caught all four.
@@ -167,6 +210,7 @@ python sweep.py --days 730             # AMD variants: in-sample vs out-of-sampl
 python coins.py --days 730             # AMD frozen rules on fresh coins
 python trend.py                        # trend following, 11 coins
 python portfolio.py --days 2190        # trend following, one account, vs buy & hold
+python postmortem.py                   # AMD loss post-mortem on the fresh coins
 ```
 
 Add `--exchange binanceusdm` to use Binance futures data, or `--synthetic` to test the code offline with fake data.
