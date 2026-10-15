@@ -1,4 +1,4 @@
-# Testing crypto trading strategies honestly
+﻿# Testing crypto trading strategies honestly
 
 I wanted a bot that trades crypto with real money using the ICT / "smart money"
 concepts popular on YouTube: **AMD (Accumulation, Manipulation, Distribution)**,
@@ -111,6 +111,8 @@ It failed the pre-set bar (PF ≥ 1.3) narrowly.
 | Buy & hold BTC | +327% (−53% drawdown) | +621% (−77% drawdown) |
 
 By year: 2020 +1%, 2021 **−19%**, 2022 **−6%**, 2023 +55%, 2024 +4%, 2025 −6%, 2026 +31%.
+
+![Trend portfolio vs buy & hold](portfolio.png)
 
 The 4-year result looked borderline-promising. Adding 2020–2022 killed it: the strategy lost money in the 2021 bull run **and** in the 2022 crash it was supposed to protect against.
 

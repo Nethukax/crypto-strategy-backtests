@@ -13,3 +13,5 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+!portfolio.png
+!portfolio.png
