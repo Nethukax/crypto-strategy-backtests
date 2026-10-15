@@ -1,0 +1,15 @@
+# downloaded market data and results
+data/
+*.csv
+*.png
+# runtime state and logs
+bot_state.json
+bot.log
+# secrets: never commit API keys
+.env
+*.key
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
